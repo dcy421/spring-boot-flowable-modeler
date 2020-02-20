@@ -26,7 +26,7 @@ import java.util.zip.ZipInputStream;
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @Slf4j
-public class FlowableDemoApplicationTests {
+public class FlowableDemoApplication2Tests {
 
     /**
      * 1）查询部署和流程定义。

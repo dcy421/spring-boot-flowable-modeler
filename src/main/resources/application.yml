@@ -13,15 +13,17 @@ spring:
 mybatis:
   mapper-locations: classpath:/META-INF/modeler-mybatis-mappings/*.xml
   configuration:
+    call-setters-on-nulls: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    jdbc-type-for-null: null
   configuration-properties:
     blobType: BLOB
     boolValue: TRUE
     prefix:
-    #flowable 取消spring boot时自动部署resource/processes中的流程文件
+
 flowable:
   async-executor-activate: false
-  database-schema-update: true
+  database-schema-update: false
   common:
     app:
       idm-url: http://localhost:${server.port}/flowable-idm
