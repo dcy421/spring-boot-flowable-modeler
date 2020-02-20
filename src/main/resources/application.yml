@@ -1,0 +1,30 @@
+server:
+  port: 8087
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://localhost:3306/flowable-demo?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8
+    username: root
+    password: root
+    driverClassName: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:/META-INF/modeler-mybatis-mappings/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  configuration-properties:
+    blobType: BLOB
+    boolValue: TRUE
+    prefix:
+    #flowable 取消spring boot时自动部署resource/processes中的流程文件
+flowable:
+  async-executor-activate: false
+  database-schema-update: true
+  common:
+    app:
+      idm-url: http://localhost:${server.port}/flowable-idm
+  modeler:
+    app:
+      deployment-api-url: http://localhost:${server.port}/
