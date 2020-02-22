@@ -1,44 +1,25 @@
 package com.dcy.api;
 
-import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import com.dcy.common.model.ResponseData;
 import com.dcy.dto.ProcessInstanceDTO;
 import com.dcy.dto.TaskDTO;
-import com.dcy.dto.TodoListDTO;
 import com.dcy.entity.ProcessInstanceVo;
-import com.google.common.collect.Lists;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.engine.*;
-import org.flowable.engine.history.HistoricActivityInstance;
-import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.identitylink.api.IdentityLink;
-import org.flowable.image.ProcessDiagramGenerator;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskInfo;
-import org.flowable.task.api.TaskQuery;
-import org.flowable.task.api.history.HistoricTaskInstance;
-import org.flowable.task.api.history.HistoricTaskInstanceQuery;
-import org.flowable.ui.modeler.domain.Model;
 import org.flowable.ui.modeler.serviceapi.ModelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -69,7 +50,8 @@ public class FlowableApiController {
     // 部署服务
     @Autowired
     private RepositoryService repositoryService;
-
+    @Autowired
+    private ManagementService managementService;
     // 流程实例服务
     @Autowired
     private RuntimeService runtimeService;
@@ -136,7 +118,7 @@ public class FlowableApiController {
             @ApiImplicitParam(name = "userId", value = "用户id", dataType = "String", paramType = "path", required = true)
     })
     @GetMapping("/getRunProInsIdList/{userId}")
-    public ResponseData<List<String>> getRunList(@PathVariable String userId) {
+    public ResponseData<List<String>> getRunList(@PathVariable(value = "userId") String userId) {
         // =============== 已签收和未签收同时查询 ===============
         List<String> result = taskService.createTaskQuery().taskCandidateOrAssigned(userId).active().list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
         return ResponseData.success(result);
@@ -148,7 +130,7 @@ public class FlowableApiController {
             @ApiImplicitParam(name = "userId", value = "用户id", dataType = "String", paramType = "query", required = true)
     })
     @GetMapping("/getRunProInsIdList/{userId}")
-    public ResponseData<List<String>> getHisList(@PathVariable String userId) {
+    public ResponseData<List<String>> getHisList(@PathVariable(value = "userId") String userId) {
         List<String> result = historyService.createHistoricTaskInstanceQuery().taskAssignee(userId).finished()
                 .orderByHistoricTaskInstanceEndTime().desc().list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
         return ResponseData.success(result);

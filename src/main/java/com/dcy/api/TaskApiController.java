@@ -1,18 +1,18 @@
 package com.dcy.api;
 
 import com.dcy.common.model.ResponseData;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.flowable.identitylink.api.IdentityLink;
-import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 流程任务相关接口封装
@@ -23,6 +23,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/flowable/task/api")
+@Api(value = "HistoryApiController", tags = {"任务操作接口"})
 public class TaskApiController {
 
     @Autowired
@@ -32,12 +33,10 @@ public class TaskApiController {
     private TaskService taskService;
 
 
-    /**
-     * 任务节点是否挂起，true 挂起， false 未挂起
-     *
-     * @param taskId
-     * @return
-     */
+    @ApiOperation(value = "根据任务id判断是否挂起", notes = "根据任务id判断是否挂起 true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskId", value = "任务ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/taskIsSuspended/{taskId}")
     public ResponseData<Boolean> taskIsSuspended(@PathVariable(value = "taskId") String taskId) {
         Boolean isSuspended = taskService.createTaskQuery().taskId(taskId).singleResult().isSuspended();

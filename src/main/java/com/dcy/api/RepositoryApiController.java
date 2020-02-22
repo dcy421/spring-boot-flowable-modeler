@@ -2,7 +2,10 @@ package com.dcy.api;
 
 import com.dcy.common.model.ResponseData;
 import com.dcy.entity.ModelRepresentationVo;
-import com.dcy.entity.ProcessDefinitionVo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,7 +16,6 @@ import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.ui.common.model.BaseRestActionRepresentation;
 import org.flowable.ui.modeler.domain.Model;
 import org.flowable.ui.modeler.model.ModelRepresentation;
 import org.flowable.ui.modeler.rest.app.ModelBpmnResource;
@@ -36,6 +38,7 @@ import java.util.*;
  **/
 @RestController
 @RequestMapping("/flowable/repository/api")
+@Api(value = "HistoryApiController", tags = {"部署及定义操作接口"})
 public class RepositoryApiController {
 
     public static final Logger logger = LogManager.getLogger(RepositoryApiController.class);
@@ -55,15 +58,12 @@ public class RepositoryApiController {
     @Autowired
     private RepositoryService repositoryService;
 
-    /**
-     * 下载 Bpmn20.xml
-     *
-     * @param response
-     * @param modelId
-     * @return
-     * @throws IOException
-     */
-    @PutMapping(value = "/getProcessModelBpmn20Xml/{modelId}")
+
+    @ApiOperation(value = "下载 Bpmn20.xml", notes = "下载 Bpmn20.xml")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "modelId", value = "model ID", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping(value = "/getProcessModelBpmn20Xml/{modelId}")
     public void getProcessModelBpmn20Xml(HttpServletResponse response, @PathVariable(value = "modelId") String modelId) throws IOException {
         modelBpmnResource.getProcessModelBpmn20Xml(response, modelId);
     }
@@ -71,10 +71,14 @@ public class RepositoryApiController {
     /**
      * 流程部署
      *
-     * @param modelId  流程ID，来自 ACT_DE_MODEL
+     * @param modelId 流程ID，来自 ACT_DE_MODEL
      * @return
      */
-    @GetMapping(value = "/flowDeployment/{modelId}/")
+    @ApiOperation(value = "流程部署", notes = "流程部署")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "modelId", value = "model ID", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping(value = "/flowDeployment/{modelId}")
     public ResponseData<String> flowDeployment(@PathVariable(value = "modelId") String modelId) {
         try {
             // 根据模型 ID 获取模型
@@ -107,12 +111,11 @@ public class RepositoryApiController {
         return ResponseData.success("发布成功");
     }
 
-    /**
-     * 流程定义挂起/激活
-     *
-     * @param processDefinedId
-     * @return
-     */
+
+    @ApiOperation(value = "根据流程定义id 操作挂起激活", notes = "根据流程定义id 操作挂起激活 true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processDefinedId", value = "流程定义id", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/processDefinedHangChange/{processDefinedId}")
     public ResponseData<String> processDefinedHangChange(@PathVariable(value = "processDefinedId") String processDefinedId) {
         // 判断挂起状态，true 挂起， false 未挂起
@@ -134,9 +137,14 @@ public class RepositoryApiController {
      * @param isForce      是否强制删除
      * @return
      */
-    @DeleteMapping(value = "/deleteProcessDefined/{deploymentId}")
-    public ResponseData<String> deleteProcessDefined(@PathVariable(value = "deploymentId") String deploymentId, @RequestParam(value = "isForce", defaultValue = "false") boolean isForce) {
-        if (isForce) {
+    @ApiOperation(value = "根据流程定义id 操作挂起激活", notes = "根据流程定义id 操作挂起激活 true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processDefinedId", value = "流程定义id", dataType = "String", paramType = "path", required = true),
+            @ApiImplicitParam(name = "isForce", value = "是否级联删除，0是，1否", dataType = "String", paramType = "path", required = true, defaultValue = "1"),
+    })
+    @DeleteMapping(value = "/deleteProcessDefined/{deploymentId}/{isForce}")
+    public ResponseData<String> deleteProcessDefined(@PathVariable(value = "deploymentId") String deploymentId, @PathVariable(value = "isForce") String isForce) {
+        if ("0".equals(isForce)) {
             // 级联删除，实例，历史都会被删除
             repositoryService.deleteDeployment(deploymentId, true);
         } else {

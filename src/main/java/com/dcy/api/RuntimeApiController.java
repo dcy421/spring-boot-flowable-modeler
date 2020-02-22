@@ -2,23 +2,17 @@ package com.dcy.api;
 
 import com.dcy.common.model.ResponseData;
 import com.dcy.entity.ProcessInstanceVo;
-import com.dcy.utils.FlowableUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.flowable.bpmn.model.FlowElement;
-import org.flowable.bpmn.model.Process;
-import org.flowable.bpmn.model.UserTask;
-import org.flowable.common.engine.api.FlowableException;
-import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import org.flowable.engine.*;
-import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.task.api.Task;
-import org.flowable.task.api.history.HistoricTaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 流程定义与实例相关接口封装
@@ -28,6 +22,7 @@ import java.util.*;
  **/
 @RestController
 @RequestMapping("/flowable/runtime/api")
+@Api(value = "HistoryApiController", tags = {"流程运行操作接口"})
 public class RuntimeApiController {
 
     @Autowired
@@ -49,12 +44,10 @@ public class RuntimeApiController {
     private HistoryService historyService;
 
 
-    /**
-     * 流程实例挂起/激活挂起/激活
-     *
-     * @param processInstanceId 流程实例ID
-     * @return
-     */
+    @ApiOperation(value = "根据流程实例id 操作挂起激活", notes = "true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processInstanceId", value = "流程实例ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/processInstanceHangChange/{processInstanceId}")
     public ResponseData<String> processInstanceHangChange(@PathVariable(value = "processInstanceId") String processInstanceId) {
         // 判断挂起状态，true 挂起， false 未挂起
@@ -119,12 +112,11 @@ public class RuntimeApiController {
 
 
 
-    /**
-     * 流程实例是否挂起，true 挂起， false 未挂起
-     *
-     * @param processInstanceId
-     * @return
-     */
+
+    @ApiOperation(value = "根据流程实例id判断是否挂起", notes = "根据流程实例id判断是否挂起 true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processInstanceId", value = "流程实例ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/processIsSuspended/{processInstanceId}")
     public ResponseData<Boolean> processIsSuspended(@PathVariable(value = "processInstanceId") String processInstanceId) {
         Boolean isSuspended = runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult().isSuspended();
