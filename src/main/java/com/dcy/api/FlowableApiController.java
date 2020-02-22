@@ -82,37 +82,6 @@ public class FlowableApiController {
     @Autowired
     private HistoryService historyService;
 
-
-    @ApiOperation(value = "根据流程id部署流程", notes = "根据流程id部署流程")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "modelId", value = "流程id", dataType = "String", paramType = "path", required = true)
-    })
-    @GetMapping("/deploy/{modelId}")
-    public ResponseData<String> deploy(@PathVariable(value = "modelId") String modelId) {
-        // 根据模型 ID 获取模型
-        Model modelData = modelService.getModel(modelId);
-        byte[] bytes = modelService.getBpmnXML(modelData);
-        if (bytes == null) {
-            logger.error("模型数据为空，请先设计流程并成功保存，再进行发布");
-        }
-
-        BpmnModel model = modelService.getBpmnModel(modelData);
-        if (model.getProcesses().size() == 0) {
-            logger.error("数据模型不符要求，请至少设计一条主线流程");
-        }
-        byte[] bpmnBytes = new BpmnXMLConverter().convertToXML(model);
-        String processName = modelData.getName() + ".bpmn20.xml";
-
-        // 部署流程
-        Deployment deploy = repositoryService.createDeployment()
-                .name(modelData.getName())
-                .addBytes(processName, bpmnBytes)
-                .deploy();
-        logger.info("流程部署成功：" + modelId + " " + new Date());
-        return ResponseData.success(deploy.getId());
-    }
-
-
     @ApiOperation(value = "启动流程", notes = "启动流程")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "processInstanceDTO", value = "流程id", dataType = "ProcessInstanceDTO", paramType = "body", required = true)
@@ -126,22 +95,6 @@ public class FlowableApiController {
         logger.info("流程启动成功：" + processInstance.getId() + " " + new Date());
         return ResponseData.success(new ProcessInstanceVo(processInstance));
     }
-
-
-    @ApiOperation(value = "根据任务id获取当前候选组", notes = "根据任务id获取当前候选组")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "taskId", value = "任务id", dataType = "String", paramType = "path", required = true)
-    })
-    @GetMapping("/taskInfo/{taskId}")
-    public List<String> taskInfo(@PathVariable(value = "taskId") String taskId) {
-        List<String> group = new ArrayList<>();
-        List<IdentityLink> taskName = taskService.getIdentityLinksForTask(taskId);
-        taskName.forEach(identityLink -> {
-            group.add(identityLink.getGroupId());
-        });
-        return group;
-    }
-
 
     @ApiOperation(value = "签收任务", notes = "签收任务")
     @ApiImplicitParams({
@@ -178,68 +131,26 @@ public class FlowableApiController {
     }
 
 
-    @ApiOperation(value = "获取代表列表", notes = "获取代表列表")
+    @ApiOperation(value = "根据用户获取代表列表流程实例ids", notes = "根据用户获取代表列表流程实例ids")
     @ApiImplicitParams({
-            @ApiImplicitParam(name = "todoListDTO", value = "任务对象", dataType = "TodoListDTO", paramType = "query", required = true)
+            @ApiImplicitParam(name = "userId", value = "用户id", dataType = "String", paramType = "path", required = true)
     })
-    @GetMapping("/getRunList")
-    public ResponseData<List<String>> getRunList(TodoListDTO todoListDTO) {
-        // =============== 已经签收的任务 ===============
-        TaskQuery todoTaskQuery = taskService.createTaskQuery().taskAssignee(todoListDTO.getUserId()).active();
-
-        // 设置查询条件
-        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
-            todoTaskQuery.processDefinitionKey(todoListDTO.getProcDefKey());
-        }
-        if (todoListDTO.getBeginDate() != null) {
-            todoTaskQuery.taskCreatedAfter(todoListDTO.getBeginDate());
-        }
-        if (todoListDTO.getEndDate() != null) {
-            todoTaskQuery.taskCreatedBefore(todoListDTO.getEndDate());
-        }
-
-        // 查询列表
-        List<String> result = todoTaskQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
-
-        // =============== 等待签收的任务 ===============
-        TaskQuery toClaimQuery = taskService.createTaskQuery().taskCandidateUser(todoListDTO.getUserId()).active();
-        // 设置查询条件
-        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
-            toClaimQuery.processDefinitionKey(todoListDTO.getProcDefKey());
-        }
-        if (todoListDTO.getBeginDate() != null) {
-            toClaimQuery.taskCreatedAfter(todoListDTO.getBeginDate());
-        }
-        if (todoListDTO.getEndDate() != null) {
-            toClaimQuery.taskCreatedBefore(todoListDTO.getEndDate());
-        }
-
-        // 查询列表
-        result.addAll(toClaimQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList()));
+    @GetMapping("/getRunProInsIdList/{userId}")
+    public ResponseData<List<String>> getRunList(@PathVariable String userId) {
+        // =============== 已签收和未签收同时查询 ===============
+        List<String> result = taskService.createTaskQuery().taskCandidateOrAssigned(userId).active().list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
         return ResponseData.success(result);
     }
 
 
-    @ApiOperation(value = "获取历史任务", notes = "获取历史任务")
+    @ApiOperation(value = "更具用户Id获取历史任务流程实例ids", notes = "更具用户Id获取历史任务流程实例ids")
     @ApiImplicitParams({
-            @ApiImplicitParam(name = "todoListDTO", value = "任务对象", dataType = "TodoListDTO", paramType = "query", required = true)
+            @ApiImplicitParam(name = "userId", value = "用户id", dataType = "String", paramType = "query", required = true)
     })
-    @GetMapping("/getHisList")
-    public ResponseData<List<String>> getHisList(TodoListDTO todoListDTO) {
-        HistoricTaskInstanceQuery histTaskQuery = historyService.createHistoricTaskInstanceQuery().taskAssignee(todoListDTO.getUserId()).finished()
-                .orderByHistoricTaskInstanceEndTime().desc();
-        // 设置查询条件
-        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
-            histTaskQuery.processDefinitionKey(todoListDTO.getProcDefKey());
-        }
-        if (todoListDTO.getBeginDate() != null) {
-            histTaskQuery.taskCompletedAfter(todoListDTO.getBeginDate());
-        }
-        if (todoListDTO.getEndDate() != null) {
-            histTaskQuery.taskCompletedBefore(todoListDTO.getEndDate());
-        }
-        // 查询列表
-        List<String> result = histTaskQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
+    @GetMapping("/getRunProInsIdList/{userId}")
+    public ResponseData<List<String>> getHisList(@PathVariable String userId) {
+        List<String> result = historyService.createHistoricTaskInstanceQuery().taskAssignee(userId).finished()
+                .orderByHistoricTaskInstanceEndTime().desc().list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
         return ResponseData.success(result);
     }
 
