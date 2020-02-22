@@ -129,7 +129,7 @@ public class FlowableApiController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "userId", value = "用户id", dataType = "String", paramType = "query", required = true)
     })
-    @GetMapping("/getRunProInsIdList/{userId}")
+    @GetMapping("/getHisProInsIdList/{userId}")
     public ResponseData<List<String>> getHisList(@PathVariable(value = "userId") String userId) {
         List<String> result = historyService.createHistoricTaskInstanceQuery().taskAssignee(userId).finished()
                 .orderByHistoricTaskInstanceEndTime().desc().list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
