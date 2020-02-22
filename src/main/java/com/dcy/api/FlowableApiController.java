@@ -1,5 +1,16 @@
 package com.dcy.api;
 
+import cn.hutool.core.util.StrUtil;
+import com.dcy.common.model.ResponseData;
+import com.dcy.dto.ProcessInstanceDTO;
+import com.dcy.dto.TaskDTO;
+import com.dcy.dto.TodoListDTO;
+import com.dcy.entity.ProcessInstanceVo;
+import com.google.common.collect.Lists;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,73 +19,77 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.engine.*;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.image.ProcessDiagramGenerator;
 import org.flowable.task.api.Task;
+import org.flowable.task.api.TaskInfo;
+import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.api.history.HistoricTaskInstanceQuery;
 import org.flowable.ui.modeler.domain.Model;
 import org.flowable.ui.modeler.serviceapi.ModelService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * 示例代码，请勿在项目中使用
- * @author: linjinp
- * @create: 2019-11-05 14:55
- **/
+ * @Author：dcy
+ * @Description:
+ * @Date: 2020-02-21 10:22
+ */
 @RestController
 @RequestMapping("/flowable/api")
+@Api(value = "FlowableApiController", tags = {"流程api操作接口"})
 public class FlowableApiController {
 
     public static final Logger logger = LogManager.getLogger(FlowableApiController.class);
 
     // 流程引擎
-    @Resource
+    @Autowired
     private ProcessEngine processEngine;
 
     // 用户以及组管理服务
-    @Resource
+    @Autowired
     private IdentityService identityService;
 
     // 模型服务
-    @Resource
+    @Autowired
     private ModelService modelService;
 
     // 部署服务
-    @Resource
+    @Autowired
     private RepositoryService repositoryService;
 
     // 流程实例服务
-    @Resource
+    @Autowired
     private RuntimeService runtimeService;
 
     // 流程节点任务服务
-    @Resource
+    @Autowired
     private TaskService taskService;
 
     // 历史数据服务
-    @Resource
+    @Autowired
     private HistoryService historyService;
 
-    /**
-     * 流程部署
-     *
-     * @param modelId 流程ID，来自 ACT_DE_MODEL
-     * @return
-     */
-    @RequestMapping(value = "/deploy/{modelId}", method = RequestMethod.GET)
-    public void deploy(@PathVariable(value = "modelId") String modelId) {
+
+    @ApiOperation(value = "根据流程id部署流程", notes = "根据流程id部署流程")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "modelId", value = "流程id", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping("/deploy/{modelId}")
+    public ResponseData<String> deploy(@PathVariable(value = "modelId") String modelId) {
         // 根据模型 ID 获取模型
         Model modelData = modelService.getModel(modelId);
-
         byte[] bytes = modelService.getBpmnXML(modelData);
         if (bytes == null) {
             logger.error("模型数据为空，请先设计流程并成功保存，再进行发布");
@@ -88,38 +103,40 @@ public class FlowableApiController {
         String processName = modelData.getName() + ".bpmn20.xml";
 
         // 部署流程
-        repositoryService.createDeployment()
+        Deployment deploy = repositoryService.createDeployment()
                 .name(modelData.getName())
                 .addBytes(processName, bpmnBytes)
                 .deploy();
-
         logger.info("流程部署成功：" + modelId + " " + new Date());
+        return ResponseData.success(deploy.getId());
     }
 
     /**
      * 启动流程
      *
-     * @param deployId 部署的流程 Id，来自 ACT_RE_PROCDEF
-     * @param userId   用户 Id
-     * @param dataKey  数据 Key，业务键，一般为表单数据的 ID，仅作为表单数据与流程实例关联的依据
+     * @param processInstanceDTO 部署的流程对象
      * @return
      */
-    @RequestMapping(value = "/start/{deployId}/{userId}/{dataKey}", method = RequestMethod.GET)
-    public void start(@PathVariable(value = "deployId") String deployId, @PathVariable(value = "userId") String userId, @PathVariable(value = "dataKey") String dataKey) {
+    @ApiOperation(value = "启动流程", notes = "启动流程")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processInstanceDTO", value = "流程id", dataType = "ProcessInstanceDTO", paramType = "body", required = true)
+    })
+    @PostMapping("/start")
+    public ResponseData<ProcessInstanceVo> start(@RequestBody ProcessInstanceDTO processInstanceDTO) {
         // 设置发起人
-        identityService.setAuthenticatedUserId(userId);
+        identityService.setAuthenticatedUserId(processInstanceDTO.getUserId());
         // 根据流程 ID 启动流程
-        runtimeService.startProcessInstanceById(deployId, dataKey);
-        logger.info("流程启动成功：" + deployId + " " + new Date());
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processInstanceDTO.getProcessDefinitionKey(), processInstanceDTO.getBusinessKey(), processInstanceDTO.getProcessVariables());
+        logger.info("流程启动成功：" + processInstance.getId() + " " + new Date());
+        return ResponseData.success(new ProcessInstanceVo(processInstance));
     }
 
-    /**
-     * 获取当前候选组
-     *
-     * @param taskId 任务 Id，来自 ACT_RU_TASK
-     * @return
-     */
-    @RequestMapping(value = "/taskInfo/{taskId}", method = RequestMethod.GET)
+
+    @ApiOperation(value = "根据任务id获取当前候选组", notes = "根据任务id获取当前候选组")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskId", value = "任务id", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping("/taskInfo/{taskId}")
     public List<String> taskInfo(@PathVariable(value = "taskId") String taskId) {
         List<String> group = new ArrayList<>();
         List<IdentityLink> taskName = taskService.getIdentityLinksForTask(taskId);
@@ -129,107 +146,121 @@ public class FlowableApiController {
         return group;
     }
 
-    /**
-     * 设置任务参数
-     *
-     * @param taskId 任务ID
-     * @param map 用户列表
-     * @return
-     */
-    @RequestMapping(value = "/setVariables", method = RequestMethod.POST)
-    public void setVariables(@RequestParam(value = "taskId") String taskId, @RequestBody Map<String ,Object> map) {
-        String processInstanceId = taskService.createTaskQuery().taskId(taskId).singleResult().getProcessInstanceId();
-        runtimeService.setVariables(processInstanceId, map);
+
+    @ApiOperation(value = "签收任务", notes = "签收任务")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskDTO", value = "任务对象", dataType = "TaskDTO", paramType = "body", required = true)
+    })
+    @PostMapping("/claim")
+    public ResponseData<String> claim(@RequestBody TaskDTO taskDTO) {
+        // 签收任务
+        taskService.claim(taskDTO.getTaskId(), taskDTO.getAssignee());
+        return ResponseData.success();
     }
 
-    /**
-     * 设置任务参数
-     *
-     * @param taskId 任务ID
-     * @param key 键
-     * @param value 值
-     * @return
-     */
-    @RequestMapping(value = "/setVariable", method = RequestMethod.POST)
-    public void setVariable(@RequestParam(value = "taskId") String taskId, @RequestParam(value = "key") String key, @RequestParam(value = "value") Object value) {
-        String processInstanceId = taskService.createTaskQuery().taskId(taskId).singleResult().getProcessInstanceId();
-        runtimeService.setVariable(processInstanceId, key, value);
-    }
-
-    /**
-     * 设置任务参数，List 使用
-     *
-     * @param taskId 任务ID
-     * @param key 键
-     * @param value 值
-     * @return
-     */
-    @RequestMapping(value = "/setListVariable", method = RequestMethod.POST)
-    public void setListVariable(@RequestParam(value = "taskId") String taskId, @RequestParam(value = "key") String key, @RequestParam(value = "value") List<String> value) {
-        String processInstanceId = taskService.createTaskQuery().taskId(taskId).singleResult().getProcessInstanceId();
-        runtimeService.setVariable(processInstanceId, key, value);
-    }
-
-    /**
-     * 任务处理1
-     *
-     * @param taskId 任务 Id，来自 ACT_RU_TASK
-     * @return
-     */
-    @RequestMapping(value = "/task/{taskId}", method = RequestMethod.GET)
-    public void task(@PathVariable(value = "taskId") String taskId) {
-        Boolean isSuspended = taskService.createTaskQuery().taskId(taskId).singleResult().isSuspended();
-        if (isSuspended) {
-            logger.info("任务已挂起，无法完成");
-            return;
+    @ApiOperation(value = "完成任务", notes = "完成任务")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskDTO", value = "任务对象", dataType = "TaskDTO", paramType = "body", required = true)
+    })
+    @PostMapping("/complete")
+    public ResponseData<String> task(@RequestBody TaskDTO taskDTO) {
+        boolean suspended = taskService.createTaskQuery().taskId(taskDTO.getTaskId()).singleResult().isSuspended();
+        if (suspended) {
+            return ResponseData.error("任务已挂起，无法完成");
         }
-        // 设置任务参数，也可不设置：key value
-        // 带 Local 为局部参数，只适用于本任务，不带 Local 为全局任务，可在其他任务调用参数
-        taskService.setVariableLocal(taskId, "status", true);
+        if (StrUtil.isNotBlank(taskDTO.getProcessInstanceId()) && StrUtil.isNotBlank(taskDTO.getComment())) {
+            // 保存意见
+            taskService.addComment(taskDTO.getTaskId(), taskDTO.getProcessInstanceId(), taskDTO.getComment());
+        }
+        if (StrUtil.isNotBlank(taskDTO.getAssignee())) {
+            // 设置审核人
+            taskService.setAssignee(taskDTO.getTaskId(), taskDTO.getAssignee());
+        }
         // 完成任务
-        taskService.complete(taskId);
-        logger.info("任务完成：" + taskId + " " + new Date());
+        taskService.complete(taskDTO.getTaskId(), taskDTO.getVariables());
+        return ResponseData.success();
     }
 
-    /**
-     * 任务处理
-     *
-     * @param taskId   任务 Id，来自 ACT_RU_TASK
-     * @param assignee 设置审核人，替换
-     * @param map      完成任务需要的条件参数
-     * @return
-     */
-    @RequestMapping(value = "/task", method = RequestMethod.POST)
-    public void taskByAssignee(@RequestParam(value = "taskId") String taskId, @RequestParam(value = "assignee") String assignee, @RequestBody Map<String, Object> map) {
-        // 设置审核人
-        taskService.setAssignee(taskId, assignee);
 
-        // 设置任务参数，也可不设置：key value，只是示例
-        // 带 Local 为局部参数，只适用于本任务，不带 Local 为全局任务，可在其他任务调用参数
-        taskService.setVariableLocal(taskId, "status", true);
+    @ApiOperation(value = "获取代表列表", notes = "获取代表列表")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "todoListDTO", value = "任务对象", dataType = "TodoListDTO", paramType = "query", required = true)
+    })
+    @GetMapping("/getRunList")
+    public ResponseData<List<String>> getRunList(TodoListDTO todoListDTO) {
+        // =============== 已经签收的任务 ===============
+        TaskQuery todoTaskQuery = taskService.createTaskQuery().taskAssignee(todoListDTO.getUserId()).active();
 
-        // 完成任务
-        taskService.complete(taskId, map);
-        logger.info("任务完成：" + taskId + " " + new Date());
+        // 设置查询条件
+        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
+            todoTaskQuery.processDefinitionKey(todoListDTO.getProcDefKey());
+        }
+        if (todoListDTO.getBeginDate() != null) {
+            todoTaskQuery.taskCreatedAfter(todoListDTO.getBeginDate());
+        }
+        if (todoListDTO.getEndDate() != null) {
+            todoTaskQuery.taskCreatedBefore(todoListDTO.getEndDate());
+        }
+
+        // 查询列表
+        List<String> result = todoTaskQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
+
+        // =============== 等待签收的任务 ===============
+        TaskQuery toClaimQuery = taskService.createTaskQuery().taskCandidateUser(todoListDTO.getUserId()).active();
+        // 设置查询条件
+        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
+            toClaimQuery.processDefinitionKey(todoListDTO.getProcDefKey());
+        }
+        if (todoListDTO.getBeginDate() != null) {
+            toClaimQuery.taskCreatedAfter(todoListDTO.getBeginDate());
+        }
+        if (todoListDTO.getEndDate() != null) {
+            toClaimQuery.taskCreatedBefore(todoListDTO.getEndDate());
+        }
+
+        // 查询列表
+        result.addAll(toClaimQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList()));
+        return ResponseData.success(result);
     }
 
-    /**
-     * 中止流程
-     * @param processId 流程ID
-     *
-     * @return
-     */
-    @RequestMapping(value = "/deleteProcess/{processId}", method = RequestMethod.GET)
+
+
+    @ApiOperation(value = "获取历史任务", notes = "获取历史任务")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "todoListDTO", value = "任务对象", dataType = "TodoListDTO", paramType = "query", required = true)
+    })
+    @GetMapping("/getHisList")
+    public ResponseData<List<String>> getHisList(TodoListDTO todoListDTO) {
+        HistoricTaskInstanceQuery histTaskQuery = historyService.createHistoricTaskInstanceQuery().taskAssignee(todoListDTO.getUserId()).finished()
+                .orderByHistoricTaskInstanceEndTime().desc();
+        // 设置查询条件
+        if (StrUtil.isNotBlank(todoListDTO.getProcDefKey())) {
+            histTaskQuery.processDefinitionKey(todoListDTO.getProcDefKey());
+        }
+        if (todoListDTO.getBeginDate() != null) {
+            histTaskQuery.taskCompletedAfter(todoListDTO.getBeginDate());
+        }
+        if (todoListDTO.getEndDate() != null) {
+            histTaskQuery.taskCompletedBefore(todoListDTO.getEndDate());
+        }
+        // 查询列表
+        List<String> result = histTaskQuery.list().stream().map(TaskInfo::getProcessInstanceId).collect(Collectors.toList());
+        return ResponseData.success(result);
+    }
+
+
+    @ApiOperation(value = "根据流程实例id中止流程", notes = "根据流程实例id中止流程")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processId", value = "流程实例id", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping("/deleteProcess/{processId}")
     public void deleteProcess(@PathVariable(value = "processId") String processId) {
         runtimeService.deleteProcessInstance(processId, "中止流程");
     }
 
-    /**
-     * 获取正在运行的数据 Id 列表
-     *
-     * @return
-     */
-    @RequestMapping(value = "/getRuntimeDataId", method = RequestMethod.GET)
+
+    @ApiOperation(value = "获取正在运行的数据 Id 列表", notes = "获取正在运行的数据 Id 列表")
+    @GetMapping("/getRuntimeDataId")
     public List<String> getRuntimeDataId() {
         List<String> idList = new ArrayList<>();
         // 获取正在执行的任务列表
@@ -500,65 +531,5 @@ public class FlowableApiController {
         }
     }
 
-//    /**
-//     * 监听器
-//     *
-//     * @param execution 分配执行实例
-//     */
-//    public boolean accessCondition(DelegateExecution execution) {
-//
-//        // 已完成的实例数
-//        int completedInstance = (int) execution.getVariable("nrOfCompletedInstances");
-//        // 实例总数
-//        int totalInstance = (int) execution.getVariable("nrOfInstances");
-//
-////            if (execution.getVariable("sum") == null) {
-////                execution.setVariable("sum", 0);
-////            }
-////            // 计算已完成多少
-////            int sum = (int) execution.getVariable("sum");
-//
-//        // 已完成的实例数 * 2 >= 实例总数，说明完成
-//        if (completedInstance * 2  >= totalInstance) {
-//            // 完成
-//            return true;
-//        } else {
-//            // 未完成
-//            return false;
-//        }
-//    }
-
-//    /**
-//     * 据任务节点id判断该节点是否为会签节点
-//     *
-//     * @param taskId 任务节点id
-//     */
-//    public boolean isMultiInstance(String taskId) {
-//        boolean flag = false;
-//        Task task=processEngine.getTaskService().createTaskQuery() // 创建任务查询
-//                .taskId(taskId) // 根据任务id查询
-//                .singleResult();
-//        if(task != null){
-//            // 获取流程定义id
-//            String processDefinitionId=task.getProcessDefinitionId();
-//
-//            ProcessDefinitionEntity processDefinitionEntity = (ProcessDefinitionEntity) processEngine.getRepositoryService()
-//                    .getProcessDefinition(processDefinitionId);
-//
-//            // 根据活动id获取活动实例
-//            HistoricActivityInstance activityInstance = historyService.createHistoricActivityInstanceQuery().processDefinitionId(processDefinitionId).unfinished().singleResult();
-//
-//            activityInstance.getActivityType()
-//
-//            if(((ActivityImpl) activityImpl).getActivityBehavior() instanceof ParallelMultiInstanceBehavior){
-//                ParallelMultiInstanceBehavior behavior = (ParallelMultiInstanceBehavior)activityImpl.getActivityBehavior();
-//                if(behavior != null && behavior.getCollectionExpression() != null){
-//                    flag = true;
-//                }
-//            }
-//        }
-//
-//        return flag;
-//    }
-
 }
+

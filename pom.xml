@@ -16,10 +16,12 @@
 
     <properties>
         <java.version>1.8</java.version>
+
         <flowable.version>6.4.1</flowable.version>
         <lombok.version>1.18.0</lombok.version>
         <fastjson.version>1.2.9</fastjson.version>
         <log4j.version>1.2.17</log4j.version>
+        <hutool.version>4.6.1</hutool.version>
     </properties>
 
     <dependencies>
@@ -28,12 +30,22 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!-- lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <!-- Hutool是一个Java工具包 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>${hutool.version}</version>
         </dependency>
         <!-- fastjson -->
         <dependency>
@@ -65,14 +77,6 @@
             <artifactId>log4j</artifactId>
             <version>${log4j.version}</version>
         </dependency>
-        <!--<dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-        </dependency>-->
 
         <!-- 配置文件处理器 -->
         <dependency>
@@ -108,6 +112,12 @@
             <groupId>org.flowable</groupId>
             <artifactId>flowable-ui-modeler-conf</artifactId>
             <version>${flowable.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.minbox.framework</groupId>
+            <artifactId>api-boot-starter-swagger</artifactId>
+            <version>2.2.2.RELEASE</version>
         </dependency>
 
         <dependency>

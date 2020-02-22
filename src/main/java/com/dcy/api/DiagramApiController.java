@@ -1,6 +1,10 @@
 package com.dcy.api;
 
 import com.dcy.utils.FlowableUtils;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.flowable.bpmn.model.BpmnModel;
@@ -12,13 +16,12 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.image.ProcessDiagramGenerator;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,37 +32,37 @@ import java.util.List;
 import java.util.Stack;
 
 /**
- * 流程图相关接口封装
- * @author: linjinp
- * @create: 2019-11-05 14:55
- **/
-@Component
+ * @Author：dcy
+ * @Description: 流程图相关接口封装
+ * @Date: 2020-02-21 10:17
+ */
 @RestController
 @RequestMapping("/flowable/diagram/api")
+@Api(value = "DiagramApiController", tags = {"流程图操作接口"})
 public class DiagramApiController {
 
     public static final Logger logger = LogManager.getLogger(DiagramApiController.class);
 
-    @Resource
+    @Autowired
     private ProcessEngine processEngine;
 
-    @Resource
+    @Autowired
     private RepositoryService repositoryService;
 
-    @Resource
+    @Autowired
     private RuntimeService runtimeService;
 
-    @Resource
+    @Autowired
     private TaskService taskService;
 
-    @Resource
+    @Autowired
     private HistoryService historyService;
 
-    /**
-     * 获取流程图
-     * @param processDefinedId
-     * @param httpServletResponse
-     */
+
+    @ApiOperation(value = "根据流程定义ID获取流程图", notes = "根据流程定义ID获取流程图")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processDefinedId", value = "流程定义ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/getFlowDiagram/{processDefinedId}")
     public void getFlowDiagram(@PathVariable(value = "processDefinedId") String processDefinedId, HttpServletResponse httpServletResponse) throws IOException {
         List<String> flows = new ArrayList<>();
@@ -81,11 +84,11 @@ public class DiagramApiController {
         out.close();
     }
 
-    /**
-     * 流程实例，显示流程进度图
-     * @param processInstanceId
-     * @param httpServletResponse
-     */
+
+    @ApiOperation(value = "根据流程实例ID获取流程图", notes = "根据流程实例ID获取流程图")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processInstanceId", value = "流程实例ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/getProcessInstanceDiagram/{processInstanceId}")
     public void getProcessInstanceDiagram(@PathVariable(value = "processInstanceId") String processInstanceId, HttpServletResponse httpServletResponse) throws IOException {
         String processDefinedId;
@@ -138,11 +141,11 @@ public class DiagramApiController {
     }
 
 
-    /**
-     * 流程任务，显示流程进度图
-     * @param taskId
-     * @return
-     */
+
+    @ApiOperation(value = "根据任务ID获取流程图", notes = "根据任务ID获取流程图")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskId", value = "任务ID", dataType = "String", paramType = "path", required = true)
+    })
     @GetMapping(value = "/getTaskDiagram/{taskId}")
     public void getTaskDiagram(@PathVariable(value = "taskId") String taskId, HttpServletResponse httpServletResponse) throws IOException {
 
@@ -198,3 +201,4 @@ public class DiagramApiController {
     }
 
 }
+

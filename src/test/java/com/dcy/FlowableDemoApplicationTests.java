@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.*;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -110,7 +111,7 @@ public class FlowableDemoApplicationTests {
      */
     @Test
     public void findMyTaskList() {
-        String userId = "user2";
+        String userId = "admin";
         TaskQuery taskQuery = taskService
                 .createTaskQuery()
                 .taskAssignee(userId);
@@ -195,8 +196,7 @@ public class FlowableDemoApplicationTests {
     public void claim() {
         String taskId = "90c0835f-53ab-11ea-803b-84ef180dd117";//任务ID
         String userId = "user1";//分配的办理人
-        taskService
-                .claim(taskId, userId);
+        taskService.claim(taskId, userId);
     }
 
     /**
@@ -261,11 +261,11 @@ public class FlowableDemoApplicationTests {
         BpmnModel process = repositoryService.getBpmnModel(flowId);
         if (process != null) {
             Collection<FlowElement> flowElements = process.getMainProcess().getFlowElements();
-            for (FlowElement e : flowElements) {
-                if ("UserTask".equals(e.getClass().getSimpleName()) && !"edit".equals(e.getId())) {
+            for (FlowElement flowElement : flowElements) {
+                if (flowElement instanceof UserTask) {
                     Map<String, String> map = new HashMap<String, String>();
-                    map.put("taskId", e.getId());
-                    map.put("taskName", e.getName());
+                    map.put("taskId", flowElement.getId());
+                    map.put("taskName", flowElement.getName());
                     userTaskList.add(map);
                 }
             }
