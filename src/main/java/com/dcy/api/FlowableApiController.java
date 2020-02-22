@@ -1,5 +1,6 @@
 package com.dcy.api;
 
+import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import com.dcy.common.model.ResponseData;
 import com.dcy.dto.ProcessInstanceDTO;
@@ -111,12 +112,7 @@ public class FlowableApiController {
         return ResponseData.success(deploy.getId());
     }
 
-    /**
-     * 启动流程
-     *
-     * @param processInstanceDTO 部署的流程对象
-     * @return
-     */
+
     @ApiOperation(value = "启动流程", notes = "启动流程")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "processInstanceDTO", value = "流程id", dataType = "ProcessInstanceDTO", paramType = "body", required = true)
@@ -224,7 +220,6 @@ public class FlowableApiController {
     }
 
 
-
     @ApiOperation(value = "获取历史任务", notes = "获取历史任务")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "todoListDTO", value = "任务对象", dataType = "TodoListDTO", paramType = "query", required = true)
@@ -249,13 +244,13 @@ public class FlowableApiController {
     }
 
 
-    @ApiOperation(value = "根据流程实例id中止流程", notes = "根据流程实例id中止流程")
+    @ApiOperation(value = "根据流程实例id删除流程实例", notes = "根据流程实例id删除流程实例")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "processId", value = "流程实例id", dataType = "String", paramType = "path", required = true)
     })
     @GetMapping("/deleteProcess/{processId}")
     public void deleteProcess(@PathVariable(value = "processId") String processId) {
-        runtimeService.deleteProcessInstance(processId, "中止流程");
+        runtimeService.deleteProcessInstance(processId, "删除流程");
     }
 
 
@@ -274,12 +269,11 @@ public class FlowableApiController {
         return idList;
     }
 
-    /**
-     * 根据用户，获取需要审核的业务键 business_key 列表
-     *
-     * @param userId 用户 Id
-     * @return
-     */
+
+    @ApiOperation(value = "根据用户，获取需要审核的业务键 business_key 列表", notes = "根据用户，获取需要审核的业务键 business_key 列表")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "userId", value = "流程实例id", dataType = "String", paramType = "path", required = true)
+    })
     @RequestMapping(value = "/getRuntimeBusinessKeyByUser/{userId}", method = RequestMethod.GET)
     public List<Map<String, Object>> getRuntimeBusinessKeyByUser(@PathVariable(value = "userId") String userId) {
         List<Map<String, Object>> idList = new ArrayList<>();
@@ -302,79 +296,13 @@ public class FlowableApiController {
         return idList;
     }
 
-    /**
-     * 获取组，获取需要审核的业务键 business_key 列表
-     *
-     * @param groupIds 组 Id
-     * @return
-     */
-    @RequestMapping(value = "/getRuntimeBusinessKeyByGroup", method = RequestMethod.POST)
-    public List<Map<String, Object>> getRuntimeBusinessKeyByGroup(@RequestBody List<String> groupIds) {
-        List<Map<String, Object>> idList = new ArrayList<>();
-        // 判断是否有组信息
-        if (groupIds != null && groupIds.size() > 0) {
-            // 根据发起人获取正在执行的任务列表
-            List<Task> tasks = taskService.createTaskQuery().taskCandidateGroupIn(groupIds).list();
-            tasks.forEach(task -> {
-                Map<String, Object> data = new HashMap<>();
-                // 根据任务获取流程实例
-                ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).singleResult();
-                // 获取流程实例中的业务键
-                data.put("businessKey", processInstance.getBusinessKey());
-                // 获取任务 Id
-                data.put("taskId", task.getId());
-                // 流程定义名称
-                data.put("processInstanceName", processInstance.getProcessDefinitionName());
-                // 流程开始时间
-                data.put("startTime", processInstance.getStartTime());
-                idList.add(data);
-            });
-        }
-        return idList;
-    }
 
-    /**
-     * 获取用户审核历史
-     *
-     * @param userId 发起人 Id
-     * @return
-     */
-    @RequestMapping(value = "/getHistoryByUser/{userId}", method = RequestMethod.GET)
-    public List<Map<String, Object>> getHistoryByUser(@PathVariable(value = "userId") String userId) {
-        List<Map<String, Object>> historyList = new ArrayList<>();
-        // 根据用户，查询任务实例历史
-        List<HistoricTaskInstance> list = historyService.createHistoricTaskInstanceQuery().taskAssignee(userId).finished().orderByHistoricTaskInstanceEndTime().desc().list();
-        list.forEach(historicTaskInstance -> {
-            // 历史流程实例
-            HistoricProcessInstance hpi = historyService.createHistoricProcessInstanceQuery().processInstanceId(historicTaskInstance.getProcessInstanceId()).singleResult();
-            // 获取需要的历史数据
-            Map<String, Object> historyInfo = new HashMap<>();
-            historyInfo.put("assignee", historicTaskInstance.getAssignee());
-            // 节点名称
-            historyInfo.put("nodeName", historicTaskInstance.getName());
-            // 流程开始时间
-            historyInfo.put("startTime", historicTaskInstance.getCreateTime());
-            // 节点操作时间（本流程节点结束时间）
-            historyInfo.put("endTime", historicTaskInstance.getEndTime());
-            // 流程定义名称
-            historyInfo.put("processName", hpi.getProcessDefinitionName());
-            // 流程实例 ID
-            historyInfo.put("processInstanceId", historicTaskInstance.getProcessInstanceId());
-            // 业务键
-            historyInfo.put("businessKey", hpi.getBusinessKey());
-            historyList.add(historyInfo);
-        });
-        return historyList;
-    }
-
-    /**
-     * 通过流程实例 Id，判断流程是否结束
-     *
-     * @param processInstanceId 流程实例 Id
-     * @return true 结束，false 未结束
-     */
+    @ApiOperation(value = "根据流程实例id判断流程是否结束", notes = "根据流程实例id判断流程是否结束,true 结束，false 未结束")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "processInstanceId", value = "流程实例id", dataType = "String", paramType = "path", required = true)
+    })
     @RequestMapping(value = "/checkProcessInstanceFinish/{processInstanceId}", method = RequestMethod.GET)
-    public boolean checkProcessInstanceFinish(@PathVariable(value = "processInstanceId") String processInstanceId) {
+    public ResponseData<Boolean> checkProcessInstanceFinish(@PathVariable(value = "processInstanceId") String processInstanceId) {
         boolean isFinish = false;
         // 根据流程 ID 获取未完成的流程中是否存在此流程
         long count = historyService.createHistoricProcessInstanceQuery().unfinished().processInstanceId(processInstanceId).count();
@@ -382,154 +310,9 @@ public class FlowableApiController {
         if (count == 0) {
             isFinish = true;
         }
-        return isFinish;
+        return ResponseData.success(isFinish);
     }
 
-
-    /**
-     * 根据任务节点获取流程实例 Id
-     *
-     * @param taskId 任务节点 Id
-     * @return
-     */
-    @RequestMapping(value = "/getTaskInfo/{taskId}", method = RequestMethod.GET)
-    public String getTaskInfo(@PathVariable(value = "taskId") String taskId) {
-        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
-        return task.getProcessInstanceId();
-    }
-
-    /**
-     * 根据流程实例 ID 获取任务进度流程图
-     *
-     * @param processInstanceId 流程实例 Id
-     * @return
-     */
-    @RequestMapping(value = "/getProcessDiagram/{processInstanceId}", method = RequestMethod.GET)
-    public void getProcessDiagram(@PathVariable(value = "processInstanceId") String processInstanceId, HttpServletResponse httpServletResponse) {
-        // 流程定义 ID
-        String processDefinitionId;
-
-        // 查看完成的进程中是否存在此进程
-        long count = historyService.createHistoricProcessInstanceQuery().finished().processInstanceId(processInstanceId).count();
-        if (count > 0) {
-            // 如果流程已经结束，则得到结束节点
-            HistoricProcessInstance pi = historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
-
-            processDefinitionId = pi.getProcessDefinitionId();
-        } else {// 如果流程没有结束，则取当前活动节点
-            // 根据流程实例ID获得当前处于活动状态的ActivityId合集
-            ProcessInstance pi = runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
-            processDefinitionId = pi.getProcessDefinitionId();
-        }
-        List<String> highLightedActivitis = new ArrayList<>();
-
-        // 获得活动的节点
-        List<HistoricActivityInstance> highLightedActivitList = historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).orderByHistoricActivityInstanceStartTime().asc().list();
-
-        for (HistoricActivityInstance tempActivity : highLightedActivitList) {
-            String activityId = tempActivity.getActivityId();
-            highLightedActivitis.add(activityId);
-        }
-
-        List<String> flows = new ArrayList<>();
-        // 获取流程图
-        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
-        ProcessEngineConfiguration processEngineConfig = processEngine.getProcessEngineConfiguration();
-
-        ProcessDiagramGenerator diagramGenerator = processEngineConfig.getProcessDiagramGenerator();
-        InputStream in = diagramGenerator.generateDiagram(bpmnModel, "bmp", highLightedActivitis, flows, processEngineConfig.getActivityFontName(),
-                processEngineConfig.getLabelFontName(), processEngineConfig.getAnnotationFontName(), processEngineConfig.getClassLoader(), 1.0, true);
-
-//        ByteArrayOutputStream output = new ByteArrayOutputStream();
-//        byte[] buffer = new byte[1024*4];
-//        int n;
-//        while (-1 != (n = in.read(buffer))) {
-//            output.write(buffer, 0, n);
-//        }
-//        byte[] imgData = output.toByteArray();
-//        output.close();
-//        in.close();
-//
-//        return imgData;
-        OutputStream out = null;
-        byte[] buf = new byte[1024];
-        int legth;
-        try {
-            out = httpServletResponse.getOutputStream();
-            while ((legth = in.read(buf)) != -1) {
-                out.write(buf, 0, legth);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            IOUtils.closeQuietly(out);
-            IOUtils.closeQuietly(in);
-        }
-    }
-
-    /**
-     * 根据任务 ID 获取任务进度流程图
-     *
-     * @param taskId 任务节点 Id
-     * @return
-     */
-    @RequestMapping(value = "/getTaskProcessDiagram/{taskId}", method = RequestMethod.GET)
-    public void getTaskProcessDiagram(@PathVariable(value = "taskId") String taskId, HttpServletResponse httpServletResponse) {
-
-        // 根据任务 ID 获取流程实例 ID
-        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
-        String processInstanceId = task.getProcessInstanceId();
-
-        // 根据流程实例获取流程图
-        // 流程定义 ID
-        String processDefinitionId;
-
-        // 查看完成的进程中是否存在此进程
-        long count = historyService.createHistoricProcessInstanceQuery().finished().processInstanceId(processInstanceId).count();
-        if (count > 0) {
-            // 如果流程已经结束，则得到结束节点
-            HistoricProcessInstance pi = historyService.createHistoricProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
-
-            processDefinitionId = pi.getProcessDefinitionId();
-        } else {// 如果流程没有结束，则取当前活动节点
-            // 根据流程实例ID获得当前处于活动状态的ActivityId合集
-            ProcessInstance pi = runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
-            processDefinitionId = pi.getProcessDefinitionId();
-        }
-        List<String> highLightedActivitis = new ArrayList<>();
-
-        // 获得活动的节点
-        List<HistoricActivityInstance> highLightedActivitList = historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).orderByHistoricActivityInstanceStartTime().asc().list();
-
-        for (HistoricActivityInstance tempActivity : highLightedActivitList) {
-            String activityId = tempActivity.getActivityId();
-            highLightedActivitis.add(activityId);
-        }
-
-        List<String> flows = new ArrayList<>();
-        //获取流程图
-        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
-        ProcessEngineConfiguration processEngineConfig = processEngine.getProcessEngineConfiguration();
-
-        ProcessDiagramGenerator diagramGenerator = processEngineConfig.getProcessDiagramGenerator();
-        InputStream in = diagramGenerator.generateDiagram(bpmnModel, "bmp", highLightedActivitis, flows, processEngineConfig.getActivityFontName(),
-                processEngineConfig.getLabelFontName(), processEngineConfig.getAnnotationFontName(), processEngineConfig.getClassLoader(), 1.0, true);
-
-        OutputStream out = null;
-        byte[] buf = new byte[1024];
-        int legth;
-        try {
-            out = httpServletResponse.getOutputStream();
-            while ((legth = in.read(buf)) != -1) {
-                out.write(buf, 0, legth);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            IOUtils.closeQuietly(out);
-            IOUtils.closeQuietly(in);
-        }
-    }
 
 }
 
