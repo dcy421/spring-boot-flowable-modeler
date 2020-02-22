@@ -134,6 +134,24 @@ public class FlowableDemoApplicationTests {
         }
     }
 
+    @Test
+    public void findMyTaskList2() {
+        String userId = "admin2";
+        List<Task> list = taskService.createNativeTaskQuery().sql("SELECT DISTINCT\n" +
+                "\tRES.* \n" +
+                "FROM\n" +
+                "\tACT_RU_TASK RES\n" +
+                "\tLEFT JOIN ACT_RU_IDENTITYLINK I ON I.TASK_ID_ = RES.ID_ \n" +
+                "WHERE\n" +
+                "\tRES.ASSIGNEE_ = '"+userId+"' OR ( RES.ASSIGNEE_ IS NULL AND I.USER_ID_ = '"+userId+"' )").list();
+        for (Task task : list) {
+            System.out.println("task id=" + task.getId());
+            System.out.println("name=" + task.getName());
+            System.out.println("assinee=" + task.getAssignee());
+            System.out.println("executionId=" + task.getExecutionId());
+            System.out.println("=====================================");
+        }
+    }
 
     /**
      * 查看组任务
