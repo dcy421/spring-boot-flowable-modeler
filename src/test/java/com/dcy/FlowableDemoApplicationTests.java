@@ -4,9 +4,11 @@ import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.*;
 import org.flowable.engine.repository.Deployment;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.identitylink.api.history.HistoricIdentityLink;
@@ -274,22 +276,26 @@ public class FlowableDemoApplicationTests {
      */
     @Test
     public void getUserTaskList() {
-        String flowId = "student-leave-key:1:67930616-53a1-11ea-bfcf-84ef180dd117";
-        List<Map<String, String>> userTaskList = new ArrayList<Map<String, String>>();
-        BpmnModel process = repositoryService.getBpmnModel(flowId);
-        if (process != null) {
-            Collection<FlowElement> flowElements = process.getMainProcess().getFlowElements();
-            for (FlowElement flowElement : flowElements) {
-                if (flowElement instanceof UserTask) {
-                    Map<String, String> map = new HashMap<String, String>();
-                    map.put("taskId", flowElement.getId());
-                    map.put("taskName", flowElement.getName());
-                    userTaskList.add(map);
+        List<Map<String, Object>> list = new ArrayList<>();
+        String processDefinedKey = "student-leave";
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionKey(processDefinedKey).latestVersion().singleResult();
+        //获取所有节点信息
+        List<Process> processes = repositoryService.getBpmnModel(processDefinition.getId()).getProcesses();
+        for (Process process : processes) {
+            Collection<FlowElement> flowElements = process.getFlowElements();
+            if (flowElements != null) {
+                for (FlowElement flowElement : flowElements) {
+                    // 类型为用户节点
+                    if (flowElement instanceof UserTask) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("taskId", flowElement.getId());
+                        map.put("taskName", flowElement.getName());
+                        list.add(map);
+                    }
                 }
             }
         }
-
-        userTaskList.stream().forEach(stringStringMap -> {
+        list.stream().forEach(stringStringMap -> {
             log.info("userTask --- {}", JSON.toJSONString(stringStringMap));
         });
     }

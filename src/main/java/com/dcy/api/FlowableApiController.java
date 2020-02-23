@@ -1,5 +1,6 @@
 package com.dcy.api;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.dcy.common.model.ResponseData;
 import com.dcy.dto.ProcessInstanceDTO;
@@ -9,14 +10,15 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.flowable.engine.*;
+import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.HistoryService;
+import org.flowable.engine.IdentityService;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskInfo;
-import org.flowable.ui.modeler.serviceapi.ModelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,30 +30,16 @@ import java.util.stream.Collectors;
  * @Description:
  * @Date: 2020-02-21 10:22
  */
+@Slf4j
 @RestController
 @RequestMapping("/flowable/api")
 @Api(value = "FlowableApiController", tags = {"流程api操作接口"})
 public class FlowableApiController {
 
-    public static final Logger logger = LogManager.getLogger(FlowableApiController.class);
-
-    // 流程引擎
-    @Autowired
-    private ProcessEngine processEngine;
-
     // 用户以及组管理服务
     @Autowired
     private IdentityService identityService;
 
-    // 模型服务
-    @Autowired
-    private ModelService modelService;
-
-    // 部署服务
-    @Autowired
-    private RepositoryService repositoryService;
-    @Autowired
-    private ManagementService managementService;
     // 流程实例服务
     @Autowired
     private RuntimeService runtimeService;
@@ -72,9 +60,16 @@ public class FlowableApiController {
     public ResponseData<ProcessInstanceVo> start(@RequestBody ProcessInstanceDTO processInstanceDTO) {
         // 设置发起人
         identityService.setAuthenticatedUserId(processInstanceDTO.getUserId());
+        Map<String, Object> variables = processInstanceDTO.getVariables();
+        if (CollUtil.isEmpty(variables)){
+            variables = CollUtil.newHashMap();
+            variables.put("businessKey",processInstanceDTO.getBusinessKey());
+        }else{
+            variables.put("businessKey",processInstanceDTO.getBusinessKey());
+        }
         // 根据流程 ID 启动流程
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processInstanceDTO.getProcessDefinitionKey(), processInstanceDTO.getBusinessKey(), processInstanceDTO.getProcessVariables());
-        logger.info("流程启动成功：" + processInstance.getId() + " " + new Date());
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processInstanceDTO.getProcessDefinitionKey(), processInstanceDTO.getBusinessKey(), variables);
+        log.info("流程启动成功：" + processInstance.getId() + " " + new Date());
         return ResponseData.success(new ProcessInstanceVo(processInstance));
     }
 
@@ -109,7 +104,9 @@ public class FlowableApiController {
         }
         if (StrUtil.isNotBlank(taskDTO.getProcessInstanceId()) && StrUtil.isNotBlank(taskDTO.getComment())) {
             // 保存意见
-            taskService.addComment(taskDTO.getTaskId(), taskDTO.getProcessInstanceId(), taskDTO.getComment());
+            taskService.addComment(taskDTO.getTaskId(), taskDTO.getProcessInstanceId(), "taskStatus", taskDTO.getAdopt() ? "success" : "reject");
+            taskService.addComment(taskDTO.getTaskId(), taskDTO.getProcessInstanceId(), "taskMessage", taskDTO.getAdopt() ? "已通过" : "已驳回");
+            taskService.addComment(taskDTO.getTaskId(), taskDTO.getProcessInstanceId(), "taskComment", taskDTO.getComment());
         }
         // 完成任务
         taskService.complete(taskDTO.getTaskId(), taskDTO.getVariables());
@@ -212,4 +209,3 @@ public class FlowableApiController {
 
 
 }
-

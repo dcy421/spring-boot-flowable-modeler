@@ -21,7 +21,7 @@ import java.util.List;
  * @create: 2019-11-05 14:55
  **/
 @RestController
-@RequestMapping("/flowable/runtime/api")
+@RequestMapping("/runtime")
 @Api(value = "RuntimeApiController", tags = {"流程运行操作接口"})
 public class RuntimeApiController {
 
@@ -67,41 +67,6 @@ public class RuntimeApiController {
      * @param flowableQueryEntity
      * @return
      */
-    /*@PostMapping(value = "/getFlowinfo")
-    public ResponseData<String> getFlowinfo(@RequestBody FlowableQueryEntity flowableQueryEntity) {
-        // 页码
-        Integer page = flowableQueryEntity.getPage();
-        // 条数
-        Integer limit = flowableQueryEntity.getLimit();
-        // 租户列表
-        List<String> tenantList = flowableQueryEntity.getTenantList();
-        // 关键字
-        String keyword = flowableQueryEntity.getKeyword();
-
-        // 把租户列表转化为逗号分隔的字符串
-        String tenantIds = "\"" + Joiner.on("\",\"").join(tenantList) + "\"";
-        //
-        Integer startIndex = PageEntity.startIndex(page, limit);
-        String sql = "SELECT * FROM " + managementService.getTableName(ProcessInstance.class) +
-                " WHERE ID_ = PROC_INST_ID_ " +
-                "AND TENANT_ID_ IN ("+ tenantIds +") ";
-        if (keyword != null && !"".equals(keyword)) {
-            sql = sql + "AND (ID_ LIKE '%"+ keyword +"%' OR NAME_ LIKE '%"+ keyword +"%' OR PROC_DEF_ID_ LIKE '%"+ keyword +"%' OR START_USER_ID_ LIKE '%"+ keyword +"%')";
-        }
-        sql = sql + "ORDER BY START_TIME_ DESC ";
-        // 获取数据总条数
-        Integer total = runtimeService.createNativeProcessInstanceQuery().sql(sql).list().size();
-        // 拼接分页
-        sql = sql + "LIMIT "+ startIndex +","+ limit;
-        // 获取当前页数据
-        List<ProcessInstance> processInstanceList = runtimeService.createNativeProcessInstanceQuery().sql(sql).list();
-        List<ProcessInstanceVo> list = new ArrayList<>();
-        processInstanceList.forEach(processInstance -> list.add(new ProcessInstanceVo(processInstance)));
-        // 分页数据组装
-        PageEntity pageEntity = new PageEntity(page, limit, total);
-        pageEntity.setData(list);
-        return JsonUtil.toJSON(ErrorMsg.SUCCESS.setNewData(pageEntity));
-    }*/
     @PostMapping(value = "/getFlowinfo")
     public ResponseData<List<ProcessInstanceVo>> getFlowinfo() {
         List<ProcessInstance> processInstanceList = runtimeService.createProcessInstanceQuery().list();
@@ -111,6 +76,15 @@ public class RuntimeApiController {
     }
 
 
+    @ApiOperation(value = "根据任务id判断是否挂起", notes = "根据任务id判断是否挂起 true 挂起， false 未挂起")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "taskId", value = "任务ID", dataType = "String", paramType = "path", required = true)
+    })
+    @GetMapping(value = "/taskIsSuspended/{taskId}")
+    public ResponseData<Boolean> taskIsSuspended(@PathVariable(value = "taskId") String taskId) {
+        Boolean isSuspended = taskService.createTaskQuery().taskId(taskId).singleResult().isSuspended();
+        return ResponseData.success(isSuspended);
+    }
 
 
     @ApiOperation(value = "根据流程实例id判断是否挂起", notes = "根据流程实例id判断是否挂起 true 挂起， false 未挂起")

@@ -27,7 +27,7 @@ public class ProcessInstanceDTO {
     /**
      * 流程变量
      */
-    private Map<String, Object> processVariables;
+    private Map<String, Object> variables;
 
     /**
      * 用户 Id

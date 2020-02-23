@@ -26,4 +26,9 @@ public class TaskDTO {
      * 流程变量
      */
     private Map<String, Object> variables;
+
+    /**
+     * 是否通过
+     */
+    private Boolean adopt = true;
 }
